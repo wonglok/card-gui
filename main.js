@@ -44,7 +44,7 @@ app.on("window-all-closed", function () {
 });
 
 let HandleApp = () => {
-  let logger = (input) => {
+  let console.log = (input) => {
     // let win = BrowserWindow.getAllWindows()[0];
     // if (win) {
     //   win.webContents.executeJavaScript(
@@ -59,7 +59,7 @@ let HandleApp = () => {
   // without Babel in ES2015
   const { NFC } = require("nfc-pcsc");
 
-  const nfc = new NFC(); // optionally you can pass logger
+  const nfc = new NFC(); // optionally you can pass console.log
 
   const { dialog } = require("electron");
 
@@ -89,11 +89,11 @@ let HandleApp = () => {
       if (serviceAccount) {
         const CARD_WRITTEN_BY = "SUSAYE";
 
-        const nfc = new NFC(); // const nfc = new NFC(pretty); // optionally you can pass logger to see internal debug logs
+        const nfc = new NFC(); // const nfc = new NFC(pretty); // optionally you can pass console.log to see internal debug logs
         const nfcCard = require("nfccard-tool");
 
         nfc.on("reader", async (reader) => {
-          logger(`device attached`, reader);
+          console.log(`device attached`, reader);
 
           // enable when you want to auto-process ISO 14443-4 tags (standard=TAG_ISO_14443_4)
           // when an ISO 14443-4 is detected, SELECT FILE command with the AID is issued
@@ -281,16 +281,16 @@ let HandleApp = () => {
           });
 
           reader.on("error", (err) => {
-            logger(`an error occurred`, reader, err);
+            console.log(`an error occurred`, reader, err);
           });
 
           reader.on("end", () => {
-            logger(`device removed`, reader);
+            console.log(`device removed`, reader);
           });
         });
 
         nfc.on("error", (err) => {
-          logger(`an error occurred`, err);
+          console.log(`an error occurred`, err);
         });
 
         dialog.showMessageBox(BrowserWindow.getAllWindows()[0], {
