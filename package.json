@@ -7,12 +7,18 @@
   "version": "1.0.0",
   "author": "wonglok",
   "scripts": {
+    "dev": "nodemon --exec \"npm run start \"",
     "start": "electron .",
     "dist": "./node_modules/.bin/electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
-    "nfc-pcsc": "^0.8.1"
+    "firebase-admin": "^9.11.1",
+    "nfc-pcsc": "^0.8.1",
+    "nfccard-tool": "^0.1.1",
+    "node-notifier": "^10.0.0",
+    "say": "^0.16.0",
+    "uuid-by-string": "^3.0.4"
   },
   "devDependencies": {
     "electron": "13.2.3",
