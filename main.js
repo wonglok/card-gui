@@ -79,219 +79,224 @@ let HandleApp = () => {
     if (filePath) {
       let str = fs.readFileSync(filePath, { encoding: "utf8" });
       let serviceAccount = JSON.parse(str);
+
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         databaseURL:
           "https://my3dworld-club-default-rtdb.asia-southeast1.firebasedatabase.app",
       });
 
-      const CARD_WRITTEN_BY = "SUSAYE";
+      if (serviceAccount) {
+        const CARD_WRITTEN_BY = "SUSAYE";
 
-      const nfc = new NFC(); // const nfc = new NFC(pretty); // optionally you can pass logger to see internal debug logs
-      const nfcCard = require("nfccard-tool");
+        const nfc = new NFC(); // const nfc = new NFC(pretty); // optionally you can pass logger to see internal debug logs
+        const nfcCard = require("nfccard-tool");
 
-      nfc.on("reader", async (reader) => {
-        logger(`device attached`, reader);
+        nfc.on("reader", async (reader) => {
+          logger(`device attached`, reader);
 
-        // enable when you want to auto-process ISO 14443-4 tags (standard=TAG_ISO_14443_4)
-        // when an ISO 14443-4 is detected, SELECT FILE command with the AID is issued
-        // the response is available as card.data in the card event
-        // you can set reader.aid to:
-        // 1. a HEX string (which will be parsed automatically to Buffer)
-        reader.aid = "F222222222";
-        // 2. an instance of Buffer containing the AID bytes
-        // reader.aid = Buffer.from('F222222222', 'hex');
-        // 3. a function which must return an instance of a Buffer when invoked with card object (containing standard and atr)
-        //    the function may generate AIDs dynamically based on the detected card
-        // reader.aid = ({ standard, atr }) => {
-        // 	return Buffer.from('F222222222', 'hex');
-        // };
+          // enable when you want to auto-process ISO 14443-4 tags (standard=TAG_ISO_14443_4)
+          // when an ISO 14443-4 is detected, SELECT FILE command with the AID is issued
+          // the response is available as card.data in the card event
+          // you can set reader.aid to:
+          // 1. a HEX string (which will be parsed automatically to Buffer)
+          reader.aid = "F222222222";
+          // 2. an instance of Buffer containing the AID bytes
+          // reader.aid = Buffer.from('F222222222', 'hex');
+          // 3. a function which must return an instance of a Buffer when invoked with card object (containing standard and atr)
+          //    the function may generate AIDs dynamically based on the detected card
+          // reader.aid = ({ standard, atr }) => {
+          // 	return Buffer.from('F222222222', 'hex');
+          // };
 
-        const getID = function () {
-          return (
-            "_" +
-            Math.random().toString(36).substr(2, 9) +
-            "_" +
-            Math.random().toString(36).substr(2, 9) +
-            "_" +
-            Math.random().toString(36).substr(2, 9)
-          );
-        };
+          const getID = function () {
+            return (
+              "_" +
+              Math.random().toString(36).substr(2, 9) +
+              "_" +
+              Math.random().toString(36).substr(2, 9) +
+              "_" +
+              Math.random().toString(36).substr(2, 9)
+            );
+          };
 
-        let working = false;
-        reader.on("card", async (card) => {
-          if (working) {
-            return;
-          }
+          let working = false;
+          reader.on("card", async (card) => {
+            if (working) {
+              return;
+            }
 
-          reader
-            .read(0, 20)
-            .then((cardHeader) => {
-              working = true;
-              return nfcCard.parseInfo(cardHeader);
-            })
-            .then((cardInfo) => {
-              // Check if a write permissions are not available
-              if (!cardInfo.parsedHeader.hasWritePermissions) {
-                return Promise.reject("Write Permission disabled");
-              }
-            })
-            .then(async () => {
-              try {
-                // There might be a NDEF message and we are able to read the tag
-                if (
-                  nfcCard.isFormatedAsNDEF() &&
-                  nfcCard.hasReadPermissions() &&
-                  nfcCard.hasNDEFMessage()
-                ) {
-                  // Read the appropriate length to get the NDEF message as buffer
-                  const NDEFRawMessage = await reader.read(
-                    4,
-                    nfcCard.getNDEFMessageLengthToRead()
-                  ); // starts reading in block 0 until 6
-                  // Parse the buffer as a NDEF raw message
+            reader
+              .read(0, 20)
+              .then((cardHeader) => {
+                working = true;
+                return nfcCard.parseInfo(cardHeader);
+              })
+              .then((cardInfo) => {
+                // Check if a write permissions are not available
+                if (!cardInfo.parsedHeader.hasWritePermissions) {
+                  return Promise.reject("Write Permission disabled");
+                }
+              })
+              .then(async () => {
+                try {
+                  // There might be a NDEF message and we are able to read the tag
+                  if (
+                    nfcCard.isFormatedAsNDEF() &&
+                    nfcCard.hasReadPermissions() &&
+                    nfcCard.hasNDEFMessage()
+                  ) {
+                    // Read the appropriate length to get the NDEF message as buffer
+                    const NDEFRawMessage = await reader.read(
+                      4,
+                      nfcCard.getNDEFMessageLengthToRead()
+                    ); // starts reading in block 0 until 6
+                    // Parse the buffer as a NDEF raw message
 
-                  const NDEFMessage = nfcCard.parseNDEF(NDEFRawMessage);
-                  // console.log("NDEFMessage:", NDEFMessage);
-                  let msg = NDEFMessage.find((e) => e.type === "text");
-                  if (msg && msg.text) {
-                    let cardID = msg.text;
-                    var db = admin.database();
-                    let cardRawInfo = db.ref("card-private-info").child(cardID);
-                    let val = (await cardRawInfo.get()).val();
-                    if (val?.cardID === cardID) {
-                      const notifier = require("node-notifier");
-                      notifier.notify({
-                        title: "Card is already in Database",
-                        message: `${cardID}`,
-                        sound: "Ping",
-                      });
+                    const NDEFMessage = nfcCard.parseNDEF(NDEFRawMessage);
+                    // console.log("NDEFMessage:", NDEFMessage);
+                    let msg = NDEFMessage.find((e) => e.type === "text");
+                    if (msg && msg.text) {
+                      let cardID = msg.text;
+                      var db = admin.database();
+                      let cardRawInfo = db
+                        .ref("card-private-info")
+                        .child(cardID);
+                      let val = (await cardRawInfo.get()).val();
+                      if (val?.cardID === cardID) {
+                        const notifier = require("node-notifier");
+                        notifier.notify({
+                          title: "Card is already in Database",
+                          message: `${cardID}`,
+                          sound: "Ping",
+                        });
 
-                      say.speak("Already Successfully written in database!");
-                      return Promise.reject("already inside database");
+                        say.speak("Already Successfully written in database!");
+                        return Promise.reject("already inside database");
+                      }
                     }
+                  } else {
+                    console.log(
+                      "Could not parse anything from this tag: \n The tag is either empty, locked, has a wrong NDEF format or is unreadable."
+                    );
                   }
-                } else {
-                  console.log(
-                    "Could not parse anything from this tag: \n The tag is either empty, locked, has a wrong NDEF format or is unreadable."
+                } catch (e) {
+                  // Clear any previously stored Data
+                  return reader.write(
+                    4,
+                    nfcCard.prepareBytesToWrite([{}]).preparedData
                   );
                 }
-              } catch (e) {
+              })
+              .then((_) => {
                 // Clear any previously stored Data
                 return reader.write(
                   4,
                   nfcCard.prepareBytesToWrite([{}]).preparedData
                 );
-              }
-            })
-            .then((_) => {
-              // Clear any previously stored Data
-              return reader.write(
-                4,
-                nfcCard.prepareBytesToWrite([{}]).preparedData
-              );
-            })
-            .then(async (_) => {
-              let createdAt = new Date();
-              let time = createdAt.getTime();
-              let cardID = getID();
-              let uuid = getUuid(cardID + time, 5);
+              })
+              .then(async (_) => {
+                let createdAt = new Date();
+                let time = createdAt.getTime();
+                let cardID = getID();
+                let uuid = getUuid(cardID + time, 5);
 
-              //
-              // // Initialize Data that should be written
-              const data = nfcCard.prepareBytesToWrite([
-                {
-                  type: "text",
-                  text: cardID,
-                  language: "en",
-                },
-                {
-                  type: "uri",
-                  uri: `https://card.elife.fun/card/${cardID}`,
-                },
-              ]);
+                //
+                // // Initialize Data that should be written
+                const data = nfcCard.prepareBytesToWrite([
+                  {
+                    type: "text",
+                    text: cardID,
+                    language: "en",
+                  },
+                  {
+                    type: "uri",
+                    uri: `https://card.elife.fun/card/${cardID}`,
+                  },
+                ]);
 
-              try {
-                await reader.write(4, data.preparedData);
-              } catch (e) {
-                say.speak("Failed to write card, please try again");
-                return;
-              }
-              // // Write Data
+                try {
+                  await reader.write(4, data.preparedData);
+                } catch (e) {
+                  say.speak("Failed to write card, please try again");
+                  return;
+                }
+                // // Write Data
 
-              var db = admin.database();
+                var db = admin.database();
 
-              //
-              let cardRawInfo = db.ref("card-private-info").child(cardID);
-              await cardRawInfo.set({
-                type: `GenesisCard`,
-                hardwareURL: `https://card.elife.fun/card/${cardID}`,
-                hardwareBase: `https://card.elife.fun/card/`,
-                cardID: cardID,
-                time,
-                privateUUID: uuid,
-                method: `npm(uuid-by-string)(cardID + time, 5)`,
-                createdAt,
-                cardWrittenBy: CARD_WRITTEN_BY,
+                //
+                let cardRawInfo = db.ref("card-private-info").child(cardID);
+                await cardRawInfo.set({
+                  type: `GenesisCard`,
+                  hardwareURL: `https://card.elife.fun/card/${cardID}`,
+                  hardwareBase: `https://card.elife.fun/card/`,
+                  cardID: cardID,
+                  time,
+                  privateUUID: uuid,
+                  method: `npm(uuid-by-string)(cardID + time, 5)`,
+                  createdAt,
+                  cardWrittenBy: CARD_WRITTEN_BY,
+                });
+
+                //
+                let cardMetaInfo = db.ref("card-meta-info").child(cardID);
+                await cardMetaInfo.set({
+                  cardID: cardID,
+                  type: `GenesisCard`,
+                  createdAt,
+                  time,
+                  base: `https://card.elife.fun/card/`,
+                  url: `https://card.elife.fun/card/${cardID}`,
+                  disabled: false,
+                });
+
+                //
+                // activation logs
+
+                return {
+                  cardID,
+                };
+              })
+              .then(({ cardID }) => {
+                const notifier = require("node-notifier");
+                // String
+                notifier.notify({
+                  title: "Done Writing the Cards",
+                  message: `${cardID}`,
+                  sound: "Blow",
+                });
+              })
+
+              .then((_) => {
+                working = false;
+
+                say.speak("Successfully written!");
+                console.log("Successfully written At: " + new Date());
+              })
+              .catch((error) => {
+                working = false;
+                console.error("Failure: ", error);
               });
+          });
 
-              //
-              let cardMetaInfo = db.ref("card-meta-info").child(cardID);
-              await cardMetaInfo.set({
-                cardID: cardID,
-                type: `GenesisCard`,
-                createdAt,
-                time,
-                base: `https://card.elife.fun/card/`,
-                url: `https://card.elife.fun/card/${cardID}`,
-                disabled: false,
-              });
+          reader.on("error", (err) => {
+            logger(`an error occurred`, reader, err);
+          });
 
-              //
-              // activation logs
-
-              return {
-                cardID,
-              };
-            })
-            .then(({ cardID }) => {
-              const notifier = require("node-notifier");
-              // String
-              notifier.notify({
-                title: "Done Writing the Cards",
-                message: `${cardID}`,
-                sound: "Blow",
-              });
-            })
-
-            .then((_) => {
-              working = false;
-
-              say.speak("Successfully written!");
-              console.log("Successfully written At: " + new Date());
-            })
-            .catch((error) => {
-              working = false;
-              console.error("Failure: ", error);
-            });
+          reader.on("end", () => {
+            logger(`device removed`, reader);
+          });
         });
 
-        reader.on("error", (err) => {
-          logger(`an error occurred`, reader, err);
+        nfc.on("error", (err) => {
+          logger(`an error occurred`, err);
         });
 
-        reader.on("end", () => {
-          logger(`device removed`, reader);
+        dialog.showMessageBox(BrowserWindow.getAllWindows()[0], {
+          message: "Ready to write cards, click ok to begin....",
         });
-      });
-
-      nfc.on("error", (err) => {
-        logger(`an error occurred`, err);
-      });
-
-      dialog.showMessageBox(BrowserWindow.getAllWindows()[0], {
-        message: "Ready to write cards, click ok to begin....",
-      });
+      }
     } else {
       dialog
         .showMessageBox(BrowserWindow.getAllWindows()[0], {
