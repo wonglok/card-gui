@@ -8,7 +8,7 @@
   "author": "wonglok",
   "scripts": {
     "start": "electron .",
-    "dist": "./node_modules/.bin/electron-builder -mwl",
+    "dist": "./node_modules/.bin/electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
