@@ -1,6 +1,6 @@
 {
-  "name": "electron-forge",
-  "productName": "electron-forge",
+  "name": "susaye-card-gui",
+  "productName": "susaye-card-gui",
   "description": "My Electron application description",
   "keywords": [],
   "main": "./main.js",
